@@ -1,0 +1,7 @@
+com\example\demo\model\Inventory.class
+com\example\demo\repo\InventoryRepo.class
+com\example\demo\dto\InventoryDTO.class
+com\example\demo\controller\InventoryController.class
+com\example\demo\service\InventoryService.class
+com\example\demo\InventoryApplication.class
+com\example\demo\service\InventoryService$1.class
