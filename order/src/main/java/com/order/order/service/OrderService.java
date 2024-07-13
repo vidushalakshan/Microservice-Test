@@ -1,6 +1,9 @@
 package com.order.order.service;
 
 import com.example.demo.dto.InventoryDTO;
+import com.order.order.common.ErrorOrderResponse;
+import com.order.order.common.OrderResponse;
+import com.order.order.common.SuccessOrderResponse;
 import com.order.order.dto.OrderDTO;
 import com.order.order.model.Orders;
 import com.order.order.repo.OrderRepo;
@@ -25,8 +28,10 @@ public class OrderService {
     @Autowired
     private ModelMapper modelMapper;
 
-    public OrderService(WebClient webClient) {
-        this.webClient = webClient;
+    public OrderService(WebClient.Builder webClientBuilder, OrderRepo orderRepo, ModelMapper modelMapper) {
+        this.webClient = webClientBuilder.baseUrl("http://localhost:8080/api/v1").build();
+        this.orderRepo=orderRepo;
+        this.modelMapper=modelMapper;
     }
 
     public List<OrderDTO> getAllOrders() {
@@ -34,23 +39,29 @@ public class OrderService {
         return modelMapper.map(orderList, new TypeToken<List<OrderDTO>>(){}.getType());
     }
 
-    public OrderDTO saveOrder(OrderDTO OrderDTO) {
+    public OrderResponse saveOrder(OrderDTO OrderDTO) {
 
         int itemId = OrderDTO.getItemId();
 
         try {
             InventoryDTO inventoryResponse = webClient.get()
-                    .uri("http://localhost:8080/api/v1/item/{itemId}")
+                    .uri(uriBuilder -> uriBuilder.path("/item/{itemId}").build(itemId))
                     .retrieve()
                     .bodyToMono(InventoryDTO.class)
                     .block();
+
+
+            if (inventoryResponse.getQuantity() > 0 ){
+                orderRepo.save(modelMapper.map(OrderDTO, Orders.class));
+                return new SuccessOrderResponse(OrderDTO);
+            }else {
+                return new ErrorOrderResponse("Item not available Please try later..");
+            }
         }
         catch (Exception e) {
             e.printStackTrace();
         }
-
-        orderRepo.save(modelMapper.map(OrderDTO, Orders.class));
-        return OrderDTO;
+        return null;
     }
 
     public OrderDTO updateOrder(OrderDTO OrderDTO) {
