@@ -1,6 +1,7 @@
 package com.order.order.service;
 
 import com.example.demo.dto.InventoryDTO;
+import com.example.demo.dto.ProductDTO;
 import com.order.order.common.ErrorOrderResponse;
 import com.order.order.common.OrderResponse;
 import com.order.order.common.SuccessOrderResponse;
@@ -48,6 +49,16 @@ public class OrderService {
                     .uri(uriBuilder -> uriBuilder.path("/item/{itemId}").build(itemId))
                     .retrieve()
                     .bodyToMono(InventoryDTO.class)
+                    .block();
+
+            assert inventoryResponse != null;
+
+            int productId = inventoryResponse.getProductId();
+
+            ProductDTO productResponse = webClient.get()
+                    .uri(uriBuilder -> uriBuilder.path("/product/{productId}").build(productId))
+                    .retrieve()
+                    .bodyToMono(ProductDTO.class)
                     .block();
 
 

@@ -53,6 +53,11 @@
             <artifactId>inventory</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.abccompany</groupId>
+            <artifactId>product</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
     </dependencies>
 
 
