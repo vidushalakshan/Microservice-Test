@@ -13,6 +13,7 @@ import org.modelmapper.TypeToken;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import javax.transaction.Transactional;
 import java.util.List;
@@ -21,7 +22,10 @@ import java.util.List;
 @Transactional
 public class OrderService {
 
-    private final WebClient webClient;
+
+    private final WebClient inventoryWebClient;
+
+    private final WebClient productWebClient;
 
     @Autowired
     private OrderRepo orderRepo;
@@ -29,8 +33,9 @@ public class OrderService {
     @Autowired
     private ModelMapper modelMapper;
 
-    public OrderService(WebClient.Builder webClientBuilder, OrderRepo orderRepo, ModelMapper modelMapper) {
-        this.webClient = webClientBuilder.baseUrl("http://localhost:8080/api/v1").build();
+    public OrderService(WebClient inventoryWebClient,WebClient productWebClient, OrderRepo orderRepo, ModelMapper modelMapper) {
+        this.inventoryWebClient = inventoryWebClient;
+        this.productWebClient = productWebClient;
         this.orderRepo=orderRepo;
         this.modelMapper=modelMapper;
     }
@@ -45,7 +50,7 @@ public class OrderService {
         int itemId = OrderDTO.getItemId();
 
         try {
-            InventoryDTO inventoryResponse = webClient.get()
+            InventoryDTO inventoryResponse = inventoryWebClient.get()
                     .uri(uriBuilder -> uriBuilder.path("/item/{itemId}").build(itemId))
                     .retrieve()
                     .bodyToMono(InventoryDTO.class)
@@ -55,21 +60,29 @@ public class OrderService {
 
             int productId = inventoryResponse.getProductId();
 
-            ProductDTO productResponse = webClient.get()
+            ProductDTO productResponse = productWebClient.get()
                     .uri(uriBuilder -> uriBuilder.path("/product/{productId}").build(productId))
                     .retrieve()
                     .bodyToMono(ProductDTO.class)
                     .block();
 
+            assert productResponse != null;
 
             if (inventoryResponse.getQuantity() > 0 ){
-                orderRepo.save(modelMapper.map(OrderDTO, Orders.class));
+                if (productResponse.getForSale() == 1) {
+                    orderRepo.save(modelMapper.map(OrderDTO, Orders.class));
+                }else {
+                    return new ErrorOrderResponse("This item is not for sale...");
+                }
                 return new SuccessOrderResponse(OrderDTO);
             }else {
                 return new ErrorOrderResponse("Item not available Please try later..");
             }
         }
-        catch (Exception e) {
+        catch (WebClientResponseException e) {
+            if (e.getStatusCode().is5xxServerError()){
+                return new ErrorOrderResponse("Item not found...");
+            }
             e.printStackTrace();
         }
         return null;
